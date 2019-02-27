@@ -1,0 +1,346 @@
+<?php
+   
+   function request_form_menu(){
+       
+      $items = array();
+      $items['dt_request_form'] = array(
+        
+        'title' => 'Get Started',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('request_form_form'),
+        //'access callback' => 'user_is_logged_in',
+        'access arguments' => array('view request_form'),
+ 
+      );
+    
+      $items['admin/config/request_form'] = array(
+        
+        'title' => 'Request form',
+        'position' => 'left',
+        'weight' => -15, 
+        'page callback' => 'system_admin_menu_block_page',
+        'access arguments' => array('access administration pages'),
+        'file' => 'system.admin.inc',
+        'file path' => drupal_get_path('module', 'system'),
+      
+      );
+  
+      $items['admin/config/request_form/settings'] = array(
+        
+        'title' => 'Request form settings',
+        'description' => 'Settings related to Request form',
+        'page callback' => 'drupal_get_form', //in this case we're calling a form
+        'page arguments' => array('request_form_settings_form'), //this is the form function
+        'access arguments' => array('administer site configuration'), //permissions
+      
+      );
+
+      return $items;
+      
+    }
+    
+    
+    function request_form_settings_form() {
+    
+      $form = array();
+  
+      $query = db_select('node_type', 'n_t');
+
+      $query->fields('n_t',array('type','name'))//SELECT the fields from node
+      ->orderBy('name', 'ASC');
+    
+      $result = $query->execute();
+    
+      $options = $result->fetchAllKeyed();
+   
+      $form['select_content_type'] = array(
+        '#type' => 'select',
+        '#title' => t('Content type'),
+        '#description' => t("Select the content type for saving Requests form."),
+        '#required' => TRUE,
+        '#options' => $options,
+        );
+   
+      $form['email'] = array(
+        '#type' => 'textfield',
+        '#title' => t('E-mail address'),
+        '#maxlength' => 255,
+        '#description' => t("Customize the e-mail recipient."),
+        '#required' => TRUE,
+      );
+      
+      return system_settings_form($form);
+    }
+
+    
+ 
+    function request_form_form() {
+        
+        global $user;
+    
+        $form['name'] = array(
+            '#title' => t('Your Name'),
+            '#type' => 'textfield',
+            '#maxlength' => 100,
+            '#description' => t('Please enter your name'),
+            '#required' => TRUE,
+            '#default_value' => $user->name,
+        );
+    
+        $form['company'] = array(
+            '#title' => t('Your organization'),
+            '#type' => 'textfield',
+            '#maxlength' => 100,
+            '#description' => t('Please enter your Organization name'),
+        );
+    
+        $form['count_of_employees'] = array(
+          '#type' => 'select',
+          '#title' => t('Count of employees'),
+          '#options' => array(
+            '10' => t('10'),
+            '20' => t('20'),
+            '>20' => t('>20'),
+          ),
+        );
+    
+        $form['city'] = array(
+            '#title' => t('Your City'),
+            '#type' => 'textfield',
+            '#maxlength' => 100,
+            '#description' => t('Please enter your City'),
+        );
+    
+        $form['contact_information'] = array(
+          '#type' => 'fieldset',                                        // тип элемента формы
+          '#title' => t('Contact Information'),
+          '#collapsible' => TRUE,                                       // определяет будет ли filedset иметь возможность раскрытия
+          '#collapsed' => FALSE,                                        // определяет положение filedset по умолчанию раскрыт/скрыт
+        );
+ 
+        $form['contact_information']['phone'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Phone'),
+          '#maxlength' => 50,
+          '#description' => t('Please enter your Phone number'),
+          '#required' => TRUE,
+        );
+ 
+        $form['contact_information']['email'] = array(
+          '#type' => 'textfield',
+          '#title' => t('E-mail'),
+          '#maxlength' => 50,
+          '#description' => t('Please enter your e-mail'),
+          '#default_value' => $user->mail,
+        );
+    
+        $form['submit'] = array(
+            '#type' => 'submit',
+            '#value' => 'Submit',
+        );
+  
+        return $form;
+    }
+    
+    function request_form_form_submit($form, &$form_state){
+        
+        drupal_set_message('Thank you! We will contact you soon.');
+        
+        global $conf;
+        
+        $email_recipient = $conf['email'];
+        
+        drupal_mail('request_form', 'notice', $email_recipient, 'en');
+        
+        global $user;
+        
+        //'rf_submissions';
+        $select_content_type = $conf['select_content_type'];
+        
+        $newnode = new stdClass();
+		$newnode->type = $select_content_type; 
+		node_object_prepare($newnode);
+        $newnode->title = t('RF');
+        $newnode->uid;
+        $newnode->language = LANGUAGE_NONE; 
+        $newnode->uid = $user->uid; 
+        // Status is 1 or 0; published or not.
+        $newnode->status = 1; 
+        // Promote is 1 or 0; promoted to front page or not.
+        $newnode->promote = 0; 
+        // Comment is 0, 1, 2; 0 = disabled, 1 = read only, or 2 = read/write.
+        $newnode->comment = 0; 
+
+        $newnode->field_date[$newnode->language][]['value'] = date('d-m-Y H:i:s');
+        $newnode->field_name[$newnode->language][]['value'] = $form_state['values']['name'];
+        $newnode->field_organisation[$newnode->language][]['value'] = $form_state['values']['company'];
+        $newnode->field_count_of_employees[$newnode->language][]['value'] = $form_state['values']['count_of_employees'];
+        $newnode->field_city[$newnode->language][]['value'] = $form_state['values']['city'];
+        $newnode->field_phone[$newnode->language][]['value'] = $form_state['values']['phone'];
+        $newnode->field_e_mail[$newnode->language][]['value'] = $form_state['values']['email'];
+        
+        print_r($form_state);
+		node_save($newnode);
+    }
+    
+    
+    function request_form_mail($key, &$message, $params) {
+        
+        switch ($key) {
+        case 'notice':
+
+        $message['subject'] = t('Notification from site!');
+        $message['body'][] = t('New form submited!');
+        break;
+        }
+    }
+    
+    function request_form_form_user_register_form_alter(&$form, &$form_state, $form_id) {
+    
+        $form['#validate'][] = 'request_form_user_register_validate';
+    }
+
+    function request_form_user_register_validate($form, &$form_state) {
+    
+        if (strlen($form_state['values']['name']) < 3){
+        
+            form_set_error('name', t('Username must be at least 3 characters.'));
+        
+        }
+    }
+    
+    function email_validate($form, &$form_state) {
+        
+        if(!filter_var($form_state['values']['email'],FILTER_VALIDATE_EMAIL)){
+            form_set_error('email', t('Invalid e-mail address!'));
+        }
+        
+    }
+    
+    function request_form_form_validate($form, &$form_state){
+        
+        if(!is_numeric($form_state['values']['phone'])){
+            form_set_error('phone', t('The phone number must contain only numbers!'));
+        }
+        
+        email_validate($form, $form_state);
+        
+    }
+    
+    function request_form_settings_form_validate($form, &$form_state){
+        
+        email_validate($form, $form_state);
+        
+    }
+    
+    function request_form_permission() {
+        return array(
+            'view request_form' => array(
+                'title' => t('View Request form'),
+                'description' => t('Allow certain roles to view Request form without control of the settings.'),
+            ),
+        );
+    }
+    
+    
+    
+    
+    function request_form_theme() {
+      return array(
+        'request_form_form' => array(
+          'render element' => 'form',
+          'template' =>'request_form',
+        ),
+      );
+    }
+    
+    function template_preprocess_request_form_form(&$variables){
+    
+      $variables['name'] = $variables['form']['name'];
+      hide($variables['form']['name']);
+
+      $variables['company'] = $variables['form']['company'];
+      hide($variables['form']['company']);
+    
+      $variables['count_of_employees'] = $variables['form']['count_of_employees'];
+      hide($variables['form']['count_of_employees']);
+    
+     $variables['city'] = $variables['form']['city'];
+      hide($variables['form']['city']);
+    
+      $variables['contact_information'] = $variables['form']['contact_information'];
+      hide($variables['form']['contact_information']);
+    
+      $variables['submit'] = $variables['form']['submit'];
+      hide($variables['form']['submit']);
+    
+    }
+
+    
+
+
+    
+    
+    
+    
+    
+    /*
+    function request_form_form_alter(&$form, &$form_state, $form_id) {
+        if ($form_id == 'request_form_form') {
+            echo 'Hello!!!';
+            $form['alter'] = array(
+                '#type' => 'item',
+                '#title' => t('Do you want to create new account???'),
+                '#markup' => t('<a href="http://drupal7/user/register">Click here!</a>'),
+            );
+        }
+    }
+    */
+    /*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    function request_form_user_register_form_alter(&$form, &$form_state, $form_id) {
+        $form['account']['name']['#title'] = t('Full name');
+    }
+    
+    OR
+    
+    function mymodule_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id === 'user_register_form') {
+    $form['account']['name']['#title'] = t('Full name');
+    // perform other changes here
+    // var_dump() or krumo() the contents of $form to see what you can change
+  }
+}
+ */
+    
+    
+/*    
+    function request_form_form_alter(&$form, &$form_state, $form_id) {
+ 
+        if ($form_id == 'request_form_form') {
+            echo 'Hello2!!!!!!!!!!!!';
+            $form['#submit'][] = 'my_submit_handler';
+            return drupal_build_form('my_submit_handler', $form_state);
+        }
+    }
+ 
+    function my_submit_handler($form, &$form_state) {
+        echo 'Hello3!!!!!!!!!!!!';
+       $option['query'] = array(
+           'name' => $form_state['values']['name'], 
+           'mail' => $form_state['values']['email'], 
+            
+            
+        );
+        $url = url('http://drupal7/profile/register', $option);// (valid path or whatever)
+        $form_state['redirect'] = $url;
+    }
+    */
+    
+    
+    
+   /* button
+#name = 'op'
+#button_type = 'submit'
+#executes_submit_callback = FALSE
+#ajax['event'] = 'mousedown'
+   */ 

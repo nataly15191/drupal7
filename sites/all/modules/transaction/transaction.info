@@ -1,0 +1,4 @@
+name = Transaction
+description = Transaction entity
+core = 7.x
+dependencies[] = entity

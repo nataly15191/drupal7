@@ -1,0 +1,441 @@
+<?php
+
+class TransactionEntity extends Entity {
+
+  /**
+   * Change the default URI from default/id to project/id
+   */
+  protected function defaultUri() {
+      
+    return array('path' => 'admin/structure/transaction/submissions/' . $this->identifier());
+    
+  }
+
+}
+
+function transaction_entity_property_info() {
+    
+  $info = array();
+  // Add meta-data about the basic node properties.
+  $properties = &$info['transaction']['properties'];
+  
+  $properties['name'] = array(
+      'label' => t('Название'),
+      'schema field' => 'name',
+      'getter callback' => 'entity_property_getter_method',
+      'setter callback' => 'entity_property_verbatim_set',
+      'required' => TRUE,
+      'description' => t('The name of transaction.'),
+    );
+    $properties['created'] = array(
+      'label' => t('Дата'),
+      'schema field' => 'created',
+      'getter callback' => 'entity_property_getter_method',
+      'setter callback' => 'entity_property_verbatim_set',
+      'required' => TRUE,
+      'description' => t('Created date of the assessment data.'),
+    );
+
+  return $info;
+  //print_r($info);
+}
+
+
+
+
+function transaction_entity_info() {
+
+  $info = array();
+
+  $info['transaction'] = array(
+    'label' => t('Transaction'),
+    'entity class' => 'TransactionEntity',
+    //'controller class' => 'EntityAPIController',
+    'controller class' => 'TransactionEntityController',
+    'uri callback' => 'entity_class_uri',
+    'admin ui' => array(
+      'path' => 'admin/structure/transaction/submissions',
+      //'controller class' => 'EntityDefaultUIController',
+      'controller class' => 'TransactionUIController',
+    ),
+    'access callback' => 'demo_access_callback',
+    //'access arguments' => array('view transaction'),
+    'base table' => 'transaction_data',
+    'fieldable' => TRUE,
+    'bundles' => array(
+      'transaction' => array(
+        'label' => t('Transaction'),
+        'admin' => array(
+          'path' => 'admin/structure/transaction/settings',
+        ),
+      ),
+      
+    ),
+    
+    'load hook' => 'transaction_load_entity',
+    'entity keys' => array(
+      'id' => 'id',
+      'label' => 'name',
+      'created' => 'created',
+    ),
+    'module' => 'transaction',
+    'views controller class' => 'EntityDefaultViewsController',
+  );
+
+  return $info;
+  
+}
+
+function transaction_permission() {
+        return array(
+            'view transaction' => array(
+                'title' => t('View transaction'),
+                'description' => t('Allow certain roles to view Transactions without control of the settings.'),
+            ),
+            
+            'edit transaction' => array(
+                'title' => t('Edit transaction'),
+                'description' => t('Allow certain roles to edit Transactions without control of the settings.'),
+            ),
+    
+        );
+    }
+    
+
+function demo_access_callback($op, $transaction = NULL, $account = NULL) {
+    //print_r($transaction);
+    
+    global $user;
+    
+    if ($op == 'view' /*|| $op == 'update' || $op == 'create' || $op == 'delete'*/) {
+      if(user_access('view transaction',$account)) {
+        
+      return TRUE;
+      }
+    }
+    if ($op == 'update' || $op == 'create' || $op == 'delete') {
+      if(user_access('edit transaction',$account)) {
+        
+      return TRUE;
+      }
+    }
+    else{
+        
+      return FALSE;
+      
+    }
+    
+}
+
+
+/**
+ * Form definition for adding / editing a project.
+ */
+function transaction_form($form, &$form_state, $transaction = NULL) {
+    
+    //dpm($transaction);
+    
+    $form['name'] = array(
+      '#title' => t('Transaction name'),
+      '#type' => 'textfield',
+      '#default_value' => isset($transaction->name) ? $transaction->name : '',
+      '#required' => TRUE,
+    );
+    
+    /*$form['created'] = array(
+      '#title' => t('Transaction date'),
+      '#type' => 'textfield',
+      '#default_value' => isset($transaction->created) ? $transaction->created : '',
+      '#required' => TRUE,
+    );*/
+    
+    $form['sum'] = array(
+      '#title' => t('Transaction sum'),
+      '#type' => 'textfield',
+      '#default_value' => isset($transaction->sum) ? $transaction->sum : '',
+      '#required' => TRUE,
+    );
+    
+    $form['recipient'] = array(
+      '#title' => t('Recipient'),
+      '#type' => 'textfield',
+      '#default_value' => isset($transaction->recipient) ? $transaction->recipient : '',
+      '#required' => TRUE,
+    );
+    
+    $form['sender'] = array(
+      '#title' => t('Sender'),
+      '#type' => 'textfield',
+      '#default_value' => isset($transaction->sender) ? $transaction->sender : '',
+      '#required' => TRUE,
+    );
+
+    $form['submit'] = array(
+      '#type' => 'submit', 
+      '#value' => isset($transaction->id) ? t('Update transaction') : t('Save transaction'),
+      '#weight' => 50,
+    );
+    
+    //Должны появиться поля!!!!!!!!!!!!!!!!!!!!!!!!
+    /////////////////////////////////////////////////////////////////////////////////////
+    field_attach_form('transaction', $transaction, $form, $form_state);
+    
+    return $form;
+}
+
+
+
+
+
+/**
+ * Submit handler for the project add/edit form.
+ */
+function transaction_form_submit($form, &$form_state) {
+
+    $transaction = entity_ui_form_submit_build_entity($form, $form_state);
+    $transaction->save();
+    drupal_set_message(t('The transaction: @name has been saved.', array('@name' => $transaction->name)));
+    $form_state['redirect'] = 'admin/structure/transaction/submissions';
+    
+}
+
+
+
+function transaction_menu() {
+  $items = array();
+  
+  /*$items['admin/structure/transaction/submissions'] = array(
+    'title' => 'Transactions',
+    'description' =>'List of Transactions.',
+    //'access arguments' => array('access content'),//????????????????????????
+    'access callback' => 'demo_access_callback',
+    'access arguments' => array('view transaction'),
+    
+  );*/
+  
+  $items['admin/structure/transaction/settings'] = array(
+    'title' => 'Transaction settings',
+    'description' =>'Set Transaction entity.',
+    'access arguments' => array('access content'),//????????????????????????
+    
+  );
+  
+  $items['admin/structure/transaction/submissions/%'] = array(
+    'title' => 'Transaction',
+    'page callback' => 'redirected_page',
+    'page arguments' => array(4),
+    'access arguments' => array('access content'),
+    
+  );
+  
+  return $items;
+}
+
+function redirected_page($id) {
+    print_r($id);
+    
+	drupal_goto($path = 'http://drupal7/admin/structure/transaction/submissions/manage/'.$id);
+}
+
+
+
+class TransactionUIController extends EntityDefaultUIController {
+
+   /**
+   * Generates the table headers for the overview table.
+   */
+  public function overviewTableHeaders($conditions, $rows, $additional_header = array()) {
+    $additional_header = array('Дата', 'Сумма', 'Получатель', 'Отправитель');
+    $header = $additional_header;
+    array_unshift($header, t('Название'));
+    if (!empty($this->entityInfo['exportable'])) {
+      $header[] = t('Status');
+    }
+    // Add operations with the right colspan.
+    $header[] = array('data' => t('Operations'), 'colspan' => $this->operationCount());
+    return $header;
+  }
+  
+  
+  /**
+   * Generates the row for the passed entity and may be overridden in order to
+   * customize the rows.
+   *
+   * @param $additional_cols
+   *   Additional columns to be added after the entity label column.
+   */
+  public function overviewTableRow($conditions, $id, $entity, $additional_cols = array()) {
+      
+    $additional_cols = array($entity->created, $entity->sum, $entity->recipient, $entity->sender);
+      
+    $entity_uri = entity_uri($this->entityType, $entity);
+
+    $row[] = array('data' => array(
+      '#theme' => 'entity_ui_overview_item',
+      '#label' => entity_label($this->entityType, $entity),
+      '#name' => !empty($this->entityInfo['exportable']) ? entity_id($this->entityType, $entity) : FALSE,
+      '#url' => $entity_uri ? $entity_uri : FALSE,
+      '#entity_type' => $this->entityType),
+    );
+    
+    
+
+    // Add in any passed additional cols.
+    foreach ($additional_cols as $col) {
+      $row[] = $col;
+    }
+
+    // Add a row for the exportable status.
+    if (!empty($this->entityInfo['exportable'])) {
+      $row[] = array('data' => array(
+        '#theme' => 'entity_status',
+        '#status' => $entity->{$this->statusKey},
+      ));
+    }
+    // In case this is a bundle, we add links to the field ui tabs.
+    $field_ui = !empty($this->entityInfo['bundle of']) && entity_type_is_fieldable($this->entityInfo['bundle of']) && module_exists('field_ui');
+    // For exportable entities we add an export link.
+    $exportable = !empty($this->entityInfo['exportable']);
+    // If i18n integration is enabled, add a link to the translate tab.
+    $i18n = !empty($this->entityInfo['i18n controller class']);
+
+    // Add operations depending on the status.
+    if (entity_has_status($this->entityType, $entity, ENTITY_FIXED)) {
+      $row[] = array('data' => l(t('clone'), $this->path . '/manage/' . $id . '/clone'), 'colspan' => $this->operationCount());
+    }
+    else {
+      $row[] = l(t('edit'), $this->path . '/manage/' . $id);
+
+      if ($field_ui) {
+        $row[] = l(t('manage fields'), $this->path . '/manage/' . $id . '/fields');
+        $row[] = l(t('manage display'), $this->path . '/manage/' . $id . '/display');
+      }
+      if ($i18n) {
+        $row[] = l(t('translate'), $this->path . '/manage/' . $id . '/translate');
+      }
+      if ($exportable) {
+        $row[] = l(t('clone'), $this->path . '/manage/' . $id . '/clone');
+      }
+
+      if (empty($this->entityInfo['exportable']) || !entity_has_status($this->entityType, $entity, ENTITY_IN_CODE)) {
+        $row[] = l(t('delete'), $this->path . '/manage/' . $id . '/delete', array('query' => drupal_get_destination()));
+      }
+      elseif (entity_has_status($this->entityType, $entity, ENTITY_OVERRIDDEN)) {
+        $row[] = l(t('revert'), $this->path . '/manage/' . $id . '/revert', array('query' => drupal_get_destination()));
+      }
+      else {
+        $row[] = '';
+      }
+    }
+    if ($exportable) {
+      $row[] = l(t('export'), $this->path . '/manage/' . $id . '/export');
+    }
+    return $row;
+  }
+  
+   
+}
+
+
+class TransactionEntityController extends EntityAPIController {
+
+  
+   // Override the save method.
+   
+  public function save($entity, DatabaseTransaction $transaction = NULL) {
+    if (isset($entity->is_new)) {
+      $entity->created = date('d-m-Y H:i:s', $_SERVER['REQUEST_TIME']);
+    }
+
+    //$entity->changed = REQUEST_TIME;
+    return parent::save($entity, $transaction);
+  }
+}
+
+
+
+
+  
+
+/*
+function redir_callback($id) {
+  
+  $transactions = entity_load('transaction', array($id));
+  $transaction = $transactions[$id];
+  
+  drupal_goto('admin/structure/transaction/submissions/manage/'.$id);
+    
+}
+*/
+
+/*
+function transaction_enable() {
+  // Check if our field is not already created.
+  if (!field_info_field('sum')) {
+    
+    $field_sum = array(
+      'field_name' => 'sum',
+      'type' => 'int',
+      'locked' => TRUE, // Settings can not be changed
+    );
+    
+    field_create_field($field_sum);
+    
+    // Create the instance on the bundle.
+    $instance_sum = array(
+      'field_name' => 'sum',
+      'entity_type' => 'transaction',
+      'bundle' => 'transaction', // If your entity does not have bundles, this is the same as the entity type.
+      'label' => 'Сумма',
+      'required' => TRUE, // Field must have a value.
+    );
+    
+    field_create_instance($instance_sum);
+    
+  }
+  
+  if(!field_info_field('recipient')) {
+      
+    $field_recipient = array(
+      'field_name' => 'recipient',
+      'type' => 'varchar',
+      'locked' => TRUE, // Settings can not be changed
+    );
+    
+    field_create_field($field_recipient);
+    
+    $instance_recipient = array(
+      'field_name' => 'recipient',
+      'entity_type' => 'transaction',
+      'bundle' => 'transaction', // If your entity does not have bundles, this is the same as the entity type.
+      'label' => 'Получатель',
+      'required' => TRUE, // Field must have a value.
+    );
+    
+    field_create_instance($instance_recipient);
+    
+  }
+  
+  if(!field_info_field('sender')) {
+    
+    $field_sender = array(
+      'field_name' => 'sender',
+      'type' => 'varchar',
+    );
+    
+    field_create_field($field_sender);
+    
+    $instance_sender = array(
+      'field_name' => 'sender',
+      'entity_type' => 'transaction',
+      'bundle' => 'transaction', // If your entity does not have bundles, this is the same as the entity type.
+      'label' => 'Отправитель',
+      'required' => TRUE, // Field must have a value.
+    );
+    
+    field_create_instance($instance_sender);
+    
+  }
+    
+}
+*/

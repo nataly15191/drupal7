@@ -1,0 +1,8 @@
+{
+    "require": {
+        "drush/drush": "8.*"
+    },
+    "config": {
+        "bin-dir": "/usr/local/bin"
+    }
+}

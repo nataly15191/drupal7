@@ -1,0 +1,5 @@
+;$Id$
+name = Owners details
+description = Custom module for Block "Owners details"
+core = 7.x
+files[] = owners_details.module

@@ -1,0 +1,69 @@
+<?php
+ 
+    function owners_details_block_info(){
+        $blocks = array();
+        $blocks['owners_details'] = array(
+            'info' => t('Owners details'),
+            'cache' => DRUPAL_NO_CACHE,
+            );
+        return $blocks;
+    }
+    
+    
+    function owners_details_block_view($delta = ''){
+        $block = array(); //инициализируем пустой массив блока
+        
+        global $user;
+        $uid = $user->uid;
+
+        
+        switch ($delta){
+            case 'owners_details': //такая же delta как мы возвращали в hook_block_info()
+                $block['subject'] = 'Owners details'; //выводим заголовок блока
+                $block['content'] = ''; //инициализируем строковую переменную
+                
+                
+                $current_user = db_select('users', 'u')
+                    ->fields('u')
+                    ->condition('u.uid', $uid)
+                    ->execute()
+                    ->fetchAssoc();
+                
+                $block['content'] .='<div>Your name: '.$current_user['name'].' <a href="'.base_path().'user/'.$uid.'/edit">edit</a></div>';
+                
+                
+                $company = db_select('node', 'n')
+                    ->fields('n')
+                    ->condition('n.type', 'company')
+                    ->condition('n.uid', $uid)
+                    ->execute()
+                    ->fetchAssoc();
+                
+                $block['content'] .='<div>Organization: '.$company['title'].' <a href="'.base_path().'node/'.$company['nid'].'/edit">edit</a></div>';
+                
+                
+                $count = db_select('node', 'n')
+                    ->condition('n.type', 'product_display')
+                    ->condition('n.uid', $uid)
+                    ->countQuery()
+                    ->execute()
+                    ->fetchField();
+
+                $block['content'] .='<div>Count products: '.$count.' <a href="http://drupal7/node/'.$company['nid'].'/products">see</a></div>';
+                
+                
+                
+                /*$query = db_select('users', 'u') //запрос выборки пользователей
+                  ->fields('u', array('uid', 'name')) //выбор полей
+                  ->orderBy('u.uid', 'DESC') //сортируем по убыванию
+                  ->range(0, 5) //выбор пяти пользователей
+                  ->execute(); //запрос к БД
+                $users = $query->fetchAll(PDO::FETCH_ASSOC); //обрабатывает запрос в виде массива
+                foreach($users as $user){
+                    $block['content'] .='<div><a href="' . base_path() . 'user/' . $user['uid'] . '">' . $user['name'] . '</a></div>';
+                    // base_path() - функция возвращает путь к корню сайта
+                }*/
+            break;
+        }
+        return $block;
+    }
